@@ -70,7 +70,6 @@ __all__ = [
 VERBOSE = True
 
 _PROFILE_RSQGL = False
-_PROFILE_IO_MAP = False
 
 # use (mapping) clipped bases at the start of read to identify start position
 USE_START_CLIP_BASES = False
@@ -1333,10 +1332,20 @@ def map_read(
         num_start_clipped_bases = len(seq_data.seq) - alignment.q_en
         num_end_clipped_bases = alignment.q_st
 
+    if hasattr(seq_data.id, 'decode'):
+        seq_data_id = seq_data.id.decode()
+    else:
+        seq_data_id = seq_data.id
+
     align_info = th.alignInfo(
-        seq_data.id.decode(), bc_subgrp, num_start_clipped_bases,
+        seq_data_id, bc_subgrp, num_start_clipped_bases,
         num_end_clipped_bases, num_ins, num_del, num_match,
         num_aligned - num_match)
+
+    #align_info = th.alignInfo(
+        #seq_data.id.decode(), bc_subgrp, num_start_clipped_bases,
+        #num_end_clipped_bases, num_ins, num_del, num_match,
+        #num_aligned - num_match)
 
     # extract genome sequence from mappy aligner
     # expand sequence to get model levels for all sites (need to handle new
@@ -1393,11 +1402,7 @@ def _io_and_map_read(
     except th.TomboError:
         # channel info is not needed currently, so just pass
         channel_info = None
-    try:
-        all_raw_signal = th.get_raw_read_slot(fast5_data)['Signal'][:]
-    except OSError:
-        raise th.TomboError(
-            'Cannot read raw signal data (inflate() probably failed)')
+    all_raw_signal = th.get_raw_read_slot(fast5_data)['Signal'][:]
     if not (sig_len_rng is None or
             sig_len_rng[0] < all_raw_signal.shape[0] < sig_len_rng[1]):
         raise th.TomboError('Raw signal not within --signal-length-range')
@@ -1687,14 +1692,6 @@ def _io_and_mappy_thread_worker(
             num_processed, proc_update_interval)
 
     return
-
-if _PROFILE_IO_MAP:
-    _io_map_wrapper = _io_and_mappy_thread_worker
-    def _io_and_mappy_thread_worker(*args):
-        import cProfile
-        cProfile.runctx('_io_map_wrapper(*args)', globals(), locals(),
-                        filename='io_map_main.prof')
-        return
 
 
 ############################################
